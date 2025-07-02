@@ -1,0 +1,5 @@
+.env 
+zenpay_backend/.env 
+*.env 
+__pycache__/ 
+*.pyc 

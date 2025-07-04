@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from ..models import Feature, User
-from ...core.exceptions import FeatureNotFoundError
+from core.exceptions import FeatureNotFoundError
 
 def create_feature(
     db: Session,

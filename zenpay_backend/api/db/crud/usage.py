@@ -4,7 +4,7 @@ from typing import Optional, List
 from datetime import datetime
 
 from ..models import UsageEvent, Feature, Customer
-from ...core.exceptions import CustomerNotFoundError, FeatureNotFoundError, InsufficientCreditsError
+from core.exceptions import CustomerNotFoundError, FeatureNotFoundError, InsufficientCreditsError
 from .credits import get_credit_balance, use_credits
 
 def track_usage(

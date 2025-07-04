@@ -1,5 +1,28 @@
-.env 
-zenpay_backend/.env 
-*.env 
-__pycache__/ 
-*.pyc 
+# Environment files
+.env
+*.env
+zenpay_backend/.env
+
+# Bytecode
+__pycache__/
+*.py[cod]
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Database files
+*.db
+
+# Logs
+*.log
+
+# OS-specific
+.DS_Store
+Thumbs.db

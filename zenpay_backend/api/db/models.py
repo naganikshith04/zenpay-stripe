@@ -31,10 +31,10 @@ class Customer(Base):
     user_id = Column(String, ForeignKey("users.id"))
     name = Column(String, nullable=True)
     email = Column(String, nullable=True)
-    metadata = Column(JSON, nullable=True)
+    metadata_json = Column(JSON, nullable=True)  # ✅ Renamed
     stripe_customer_id = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+
     # Relationships
     user = relationship("User", back_populates="customers")
     usage_events = relationship("UsageEvent", back_populates="customer")
@@ -75,10 +75,11 @@ class UsageEvent(Base):
 
 class CreditTransaction(Base):
     __tablename__ = "credit_transactions"
-    
-    id = Column(String, primary_key=True, default=generate_uuid)
-    user_id = Column(String, ForeignKey("users.id"))
-    customer_id = Column(String, ForeignKey("customers.id"))
-    amount = Column(Float)  # Positive for additions, negative for usage
-    description = Column(String, nullable=True)
+
+    id = Column(String, primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String)
+    customer_id = Column(String, index=True)
+    amount = Column(Float)
     timestamp = Column(DateTime, default=datetime.utcnow)
+    description = Column(String)
+    type = Column(String)

@@ -1,10 +1,17 @@
 # main.py
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), "api"))
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from api.routes.features import features_router
+from api.v1.usage import router as usage_router
+from api.v1.credits import router as credits_router
 
-# Import database models and create tables
 from db.models import Base
 from db.session import engine
+
 Base.metadata.create_all(bind=engine)
 
 # Import routers
@@ -54,6 +61,10 @@ def create_test_user():
         return test_user.api_key
     finally:
         db.close()
+
+app.include_router(features_router, prefix="/api/v1/features", tags=["features"])
+app.include_router(usage_router, prefix="/api/v1/usage", tags=["usage"])
+app.include_router(credits_router, prefix="/api/v1/credits")
 
 # Initialize test user
 TEST_API_KEY = create_test_user()

@@ -1,4 +1,5 @@
 # models/request.py
+from datetime import datetime
 from pydantic import BaseModel, validator
 from typing import Optional, Dict, Any
 
@@ -42,3 +43,16 @@ class FeatureResponse(BaseModel):
     unit_name: str
     price_per_unit: float
     created_at: str
+    
+class UsageTrack(BaseModel):
+    customer_id: str
+    feature: str
+    quantity: float
+    idempotency_key: Optional[str] = None
+    
+class CreditTopUpRequest(BaseModel):
+    customer_id: str
+    amount: float
+
+class CreditAdd(BaseModel):
+    amount: float

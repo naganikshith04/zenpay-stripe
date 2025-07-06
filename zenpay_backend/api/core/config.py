@@ -1,7 +1,9 @@
 # zenpay_backend/core/config.py
 import os
 from typing import Any, Dict, Optional
-from pydantic import BaseSettings, validator, PostgresDsn, AnyHttpUrl
+from pydantic_settings import BaseSettings
+from pydantic import validator, PostgresDsn, AnyHttpUrl
+
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "ZenPay"

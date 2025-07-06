@@ -1,15 +1,18 @@
+print("✅ LOADING MAIN.PY")
 # zenpay_backend/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api.v1 import customers, usage, credits, webhooks
+from api.v1 import customers, usage, credits, webhooks
 from .core.config import settings
-from .db.models import Base
-from .db.session import engine
+from zenpay_backend.db.models import Base
+from zenpay_backend.db.session import engine
 
-# Create database tables
+
+with open("main_loaded.log", "w") as f:
+    f.write("✅ main.py has been loaded\n")
+
 Base.metadata.create_all(bind=engine)
-
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="API for usage-based billing with Stripe",

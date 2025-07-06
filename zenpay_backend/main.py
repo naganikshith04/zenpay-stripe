@@ -9,8 +9,8 @@ from api.routes.features import features_router
 from api.v1.usage import router as usage_router
 from api.v1.credits import router as credits_router
 
-from db.models import Base
-from db.session import engine
+from api.db.models import Base
+from api.db.session import engine
 
 Base.metadata.create_all(bind=engine)
 
@@ -23,6 +23,14 @@ app = FastAPI(
     description="API for usage-based billing with Stripe",
     version="0.1.0"
 )
+
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+logger.info("✅ LOADING MAIN.PY")
+# Create database tables
 
 # Configure CORS
 app.add_middleware(
@@ -38,8 +46,8 @@ app.include_router(customers_router, prefix="/api/v1/customers", tags=["customer
 
 # Create a test user for development
 def create_test_user():
-    from db.session import SessionLocal
-    from db.models import User
+    from api.db.session import SessionLocal
+    from api.db.models import User
     
     db = SessionLocal()
     try:

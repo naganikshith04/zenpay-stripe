@@ -1,67 +1,102 @@
-# zenpay_backend/api/routes/usage.py
-
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+# zenpay_backend/api/v1/usage.py
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from datetime import datetime
+from typing import List, Optional
 
-from zenpay_backend.api.dependencies import get_db, get_current_user_by_api_key
-from zenpay_backend.db.models import User
-from zenpay_backend.db.crud import usage as usage_crud, customers as customers_crud
-from zenpay_backend.api.models.request import UsageTrack
-from zenpay_backend.api.models.response import UsageEventBase
-from zenpay_backend.services import stripe as stripe_service
+from api.db.session import get_db
+from api.dependencies import get_current_user as get_current_user_by_api_key
+from api.db.models import User
+from api.models.request import UsageTrack
+from models.response import UsageEventResponse
+from api.db.crud.usage import track_usage, get_usage_events
+from core.exceptions import CustomerNotFoundError, FeatureNotFoundError, InsufficientCreditsError
+from api.db.crud.features import get_feature_by_code
 
 router = APIRouter()
 
-@router.post("/track", response_model=UsageEventBase)
-async def track_usage(
-    data: UsageTrack,
+@router.post("/track", response_model=UsageEventResponse)
+def record_usage(
+    usage_data: UsageTrack,
+    use_credits: bool = Query(True, description="Whether to deduct credits for this usage"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_by_api_key)
 ):
     """
     Track usage for a customer's feature
     """
-    # Check if customer exists
-    customer = customers_crud.get_customer(db, current_user.id, data.customer_id)
-    if not customer:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Customer with id {data.customer_id} not found"
+    try:
+        usage_event = track_usage(
+            db=db,
+            user_id=current_user.id,
+            customer_id=usage_data.customer_id,
+            feature_code=usage_data.feature,
+            quantity=usage_data.quantity,
+            idempotency_key=usage_data.idempotency_key,
+            use_customer_credits=use_credits
+        )
+        
+        # Convert to response model
+        return UsageEventResponse(
+            id=usage_event.id,
+            customer_id=usage_event.customer_id,
+            feature=usage_event.feature.code,  # Use feature code in response
+            quantity=usage_event.quantity,
+            timestamp=usage_event.timestamp
         )
     
-    # Create usage event
-    usage_event = usage_crud.create_usage_event(
+    except CustomerNotFoundError:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    except FeatureNotFoundError:
+        raise HTTPException(status_code=404, detail="Feature not found")
+    except InsufficientCreditsError as e:
+        raise HTTPException(status_code=402, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/events", response_model=List[UsageEventResponse])
+def get_usage_records(
+    customer_id: Optional[str] = None,
+    feature_code: Optional[str] = None,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_by_api_key)
+):
+    """
+    Get usage events with optional filtering
+    """
+    # Convert feature_code to feature_id if provided
+    feature_id = None
+    if feature_code:
+        
+        feature = get_feature_by_code(db, current_user.id, feature_code)
+        if feature:
+            feature_id = feature.id
+        else:
+            raise HTTPException(status_code=404, detail=f"Feature {feature_code} not found")
+    
+    # Get usage events
+    events = get_usage_events(
         db=db,
         user_id=current_user.id,
-        customer_id=data.customer_id,
-        feature_code=data.feature,
-        quantity=data.quantity,
-        idempotency_key=data.idempotency_key
+        customer_id=customer_id,
+        feature_id=feature_id,
+        start_date=start_date,
+        end_date=end_date,
+        skip=skip,
+        limit=limit
     )
     
-    if not usage_event:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Feature with code {data.feature} not found"
-        )
-    
-    # Return usage event with feature code instead of ID
-    result = UsageEventBase(
-        id=usage_event.id,
-        customer_id=usage_event.customer_id,
-        feature=usage_event.feature.code,
-        quantity=usage_event.quantity,
-        timestamp=usage_event.timestamp
-    )
-    
-    # Asynchronously report to Stripe if possible
-    if current_user.stripe_connect_id and customer.stripe_customer_id and usage_event.feature.stripe_price_id:
-        try:
-            # This would be better handled by a background task
-            await stripe_service.report_usage_to_stripe(db, usage_event.id)
-        except Exception:
-            # Log the error but don't fail the request
-            pass
-    
-    return result
+    # Convert to response models
+    return [
+        UsageEventResponse(
+            id=event.id,
+            customer_id=event.customer_id,
+            feature=event.feature.code,  # Use feature code in response
+            quantity=event.quantity,
+            timestamp=event.timestamp
+        ) for event in events
+    ]

@@ -50,7 +50,9 @@ class Feature(Base):
     price_per_unit = Column(Float)
     stripe_price_id = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+    stripe_product_id = Column(String, nullable=True)
+    stripe_price_id = Column(String, nullable=True)
+
     # Relationships
     user = relationship("User", back_populates="features")
     usage_events = relationship("UsageEvent", back_populates="feature")

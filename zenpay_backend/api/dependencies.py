@@ -2,8 +2,8 @@
 from fastapi import Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 
-from db.session import get_db
-from db.models import User
+from api.db.session import get_db
+from api.db.models import User
 
 def get_current_user(
     api_key: str = Header(..., convert_underscores=False, alias="api-key"), 

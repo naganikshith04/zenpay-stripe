@@ -6,7 +6,7 @@ from typing import List
 
 # Import models
 from db.models import Feature, UsageEvent, User
-from db.session import get_db
+from api.db.session import get_db
 from dependencies import get_current_user
 from models.request import FeatureCreate, FeatureUpdate
 from models.response import FeatureResponse

@@ -3,13 +3,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 
-from db.crud.credits import add_credits, use_credits, get_credit_balance, get_credit_transactions
-from db.crud.customers import get_customer
-from db.session import get_db
+from api.db.crud.credits import add_credits, use_credits, get_credit_balance, get_credit_transactions
+from api.db.crud.customers import get_customer
+from api.db.session import get_db
 from dependencies import get_current_user as get_current_user_by_api_key
 from models.request import CreditAdd, CreditTopUpRequest
 from models.response import CreditTransactionResponse, CreditBalance
-from db.models import User
+from api.db.models import User
 from core.exceptions import CustomerNotFoundError
 
 router = APIRouter()

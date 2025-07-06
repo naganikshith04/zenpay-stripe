@@ -3,14 +3,19 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 
-from ....db.crud.customers import create_customer, get_customer, get_customers, delete_customer
-from ....db.session import get_db
-from ....dependencies import get_current_user_by_api_key
-from ....models.request import CustomerCreate, CustomerUpdate
-from ....models.response import CustomerResponse
-from ....db.models import User
+from db.crud.customers import create_customer, get_customer, get_customers, delete_customer
+from db.session import get_db
+from dependencies import get_current_user_by_api_key
+from models.request import CustomerCreate, CustomerUpdate
+from models.response import CustomerResponse
+from db.models import User
 
 router = APIRouter()
+
+from services.stripe import create_stripe_customer  # Add this import
+import logging
+logger = logging.getLogger(__name__)
+
 
 @router.post("", response_model=CustomerResponse)
 def create_new_customer(
@@ -18,15 +23,32 @@ def create_new_customer(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_by_api_key)
 ):
-    """Create a new customer"""
+    """Create a new customer and a Stripe customer"""
+    try:
+        stripe_customer = create_stripe_customer(
+            customer_name=customer.name,
+            customer_email=customer.email,
+            user_stripe_account=current_user.stripe_connect_id
+        )
+        stripe_customer_id = stripe_customer["id"]
+        logger.info("📥 Inside create_new_customer endpoint")
+
+        raise Exception("STOP HERE: inside create_new_customer")
+        logger.info(f"✅ Created Stripe customer: {stripe_customer_id}")
+    except Exception as e:
+        logger.error(f"❌ Stripe error: {e}")
+        raise HTTPException(status_code=400, detail=f"Stripe error: {str(e)}")
+
     return create_customer(
         db=db,
         user_id=current_user.id,
         customer_id=customer.id,
         name=customer.name,
         email=customer.email,
-        metadata=customer.metadata
+        metadata=customer.metadata,
+        stripe_customer_id=stripe_customer_id
     )
+
 
 @router.get("/{customer_id}", response_model=CustomerResponse)
 def read_customer(

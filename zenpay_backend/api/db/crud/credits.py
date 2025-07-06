@@ -8,7 +8,7 @@ from models.response import CreditTopUpResponse
 from ..models import CreditTransaction, Customer, User
 from core.exceptions import CustomerNotFoundError
 from dependencies import get_current_user
-from db.session import get_db
+from api.db.session import get_db
 
 
 def add_credits(

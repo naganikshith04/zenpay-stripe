@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from typing import Optional, List
 from datetime import datetime
 
+import stripe
+
 from ..models import UsageEvent, Feature, Customer
 from core.exceptions import CustomerNotFoundError, FeatureNotFoundError, InsufficientCreditsError
 from .credits import get_credit_balance, use_credits
@@ -80,6 +82,16 @@ def track_usage(
     
     return usage_event
 
+
+def report_usage_to_stripe(stripe_price_id: str, stripe_customer_id: str, quantity: float, timestamp: datetime):
+    stripe.UsageRecord.create(
+        quantity=quantity,
+        timestamp=int(timestamp.timestamp()),
+        action='increment',
+        subscription_item=stripe_price_id,
+    )
+    
+    
 def get_usage_events(
     db: Session,
     user_id: str,

@@ -8,7 +8,7 @@ class CustomerResponse(BaseModel):
     name: Optional[str] = None
     email: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
-    created_at: str
+    created_at: datetime
     
 class UsageEventResponse(BaseModel):
     id: str

@@ -5,7 +5,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "api"))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.routes.features import features_router
+from api.routes.prodcuts import product_router
 from api.v1.usage import router as usage_router
 from api.v1.credits import router as credits_router
 
@@ -70,7 +70,7 @@ def create_test_user():
     finally:
         db.close()
 
-app.include_router(features_router, prefix="/api/v1/features", tags=["features"])
+app.include_router(product_router, prefix="/api/v1/products", tags=["products"])
 app.include_router(usage_router, prefix="/api/v1/usage", tags=["usage"])
 app.include_router(credits_router, prefix="/api/v1/credits")
 

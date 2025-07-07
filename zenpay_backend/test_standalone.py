@@ -68,7 +68,7 @@ def track_usage(customer_id):
     }
     data = {
         "customer_id": customer_id,
-        "feature": "api_calls",
+        "product": "api_calls",
         "quantity": 5,
         "idempotency_key": f"test_{uuid.uuid4().hex}"
     }
@@ -105,7 +105,7 @@ def test_idempotency(customer_id):
     }
     data = {
         "customer_id": customer_id,
-        "feature": "api_calls",
+        "product": "api_calls",
         "quantity": 7,
         "idempotency_key": idempotency_key
     }

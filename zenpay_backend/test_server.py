@@ -3,7 +3,7 @@
 import uvicorn
 from zenpay_backend.main import app
 from zenpay_backend.db.session import engine
-from zenpay_backend.db.models import Base, User, Feature
+from zenpay_backend.db.models import Base, User, product
 from zenpay_backend.core.security import get_password_hash, generate_api_key
 from sqlalchemy.orm import Session
 
@@ -32,8 +32,8 @@ def setup_test_data():
             db.commit()
             db.refresh(test_user)
             
-            # Create test features
-            feature1 = Feature(
+            # Create test products
+            product1 = product(
                 user_id=test_user.id,
                 name="API Calls",
                 code="api_calls",
@@ -41,7 +41,7 @@ def setup_test_data():
                 price_per_unit=0.01
             )
             
-            feature2 = Feature(
+            product2 = product(
                 user_id=test_user.id,
                 name="Storage",
                 code="storage",
@@ -49,14 +49,14 @@ def setup_test_data():
                 price_per_unit=0.50
             )
             
-            db.add(feature1)
-            db.add(feature2)
+            db.add(product1)
+            db.add(product2)
             db.commit()
         
         print("\n=== TEST ENVIRONMENT READY ===")
         print(f"Test User Email: test@example.com")
         print(f"Test User API Key: {test_user.api_key}")
-        print("Available Features: 'api_calls', 'storage'")
+        print("Available products: 'api_calls', 'storage'")
         print("===============================\n")
         
     except Exception as e:

@@ -32,8 +32,6 @@ def create_new_customer(
         )
         stripe_customer_id = stripe_customer["id"]
         logger.info("📥 Inside create_new_customer endpoint")
-
-        raise Exception("STOP HERE: inside create_new_customer")
         logger.info(f"✅ Created Stripe customer: {stripe_customer_id}")
     except Exception as e:
         logger.error(f"❌ Stripe error: {e}")

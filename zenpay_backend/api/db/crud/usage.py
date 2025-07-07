@@ -5,21 +5,21 @@ from datetime import datetime
 
 import stripe
 
-from ..models import UsageEvent, Feature, Customer
-from core.exceptions import CustomerNotFoundError, FeatureNotFoundError, InsufficientCreditsError
+from ..models import UsageEvent, Product, Customer
+from core.exceptions import CustomerNotFoundError, ProductNotFoundError, InsufficientCreditsError
 from .credits import get_credit_balance, use_credits
 
 def track_usage(
     db: Session,
     user_id: str,
     customer_id: str,
-    feature_code: str,
+    product_code: str,
     quantity: float,
     idempotency_key: Optional[str] = None,
     use_customer_credits: bool = True
 ) -> UsageEvent:
     """
-    Track usage of a feature and optionally deduct credits
+    Track usage of a product and optionally deduct credits
     """
     # Check if customer exists
     customer = db.query(Customer).filter(
@@ -30,14 +30,14 @@ def track_usage(
     if not customer:
         raise CustomerNotFoundError(f"Customer {customer_id} not found")
     
-    # Find the feature by code
-    feature = db.query(Feature).filter(
-        Feature.user_id == user_id,
-        Feature.code == feature_code
+    # Find the product by code
+    product = db.query(Product).filter(
+        Product.user_id == user_id,
+        Product.code == product_code
     ).first()
     
-    if not feature:
-        raise FeatureNotFoundError(f"Feature {feature_code} not found")
+    if not product:
+        raise ProductNotFoundError(f"Product {product_code} not found")
     
     # Check idempotency key if provided
     if idempotency_key:
@@ -50,7 +50,7 @@ def track_usage(
             return existing
     
     # Calculate cost
-    cost = quantity * feature.price_per_unit
+    cost = quantity * product.price_per_unit
     
     # Check if using credits and if sufficient credits are available
     if use_customer_credits:
@@ -64,14 +64,14 @@ def track_usage(
             user_id=user_id,
             customer_id=customer_id,
             amount=cost,
-            description=f"Usage: {feature.name} x {quantity}"
+            description=f"Usage: {product.name} x {quantity}"
         )
     
     # Create usage event
     usage_event = UsageEvent(
         user_id=user_id,
         customer_id=customer_id,
-        feature_id=feature.id,
+        product_id=product.id,
         quantity=quantity,
         idempotency_key=idempotency_key
     )
@@ -84,19 +84,26 @@ def track_usage(
 
 
 def report_usage_to_stripe(stripe_price_id: str, stripe_customer_id: str, quantity: float, timestamp: datetime):
-    stripe.UsageRecord.create(
-        quantity=quantity,
-        timestamp=int(timestamp.timestamp()),
-        action='increment',
-        subscription_item=stripe_price_id,
-    )
+    print(f"[Stripe] Reporting usage: customer={stripe_customer_id}, price_id={stripe_price_id}, quantity={quantity}, time={timestamp}")
+    try:
+        response = stripe.UsageRecord.create(
+            quantity=quantity,
+            timestamp=int(timestamp.timestamp()),
+            action='increment',
+            subscription_item=stripe_price_id,
+        )
+        print(f"[Stripe] Usage record response: {response}")
+    except Exception as e:
+        print(f"[Stripe] Stripe error: {e}")
+        raise
+
     
     
 def get_usage_events(
     db: Session,
     user_id: str,
     customer_id: Optional[str] = None,
-    feature_id: Optional[str] = None,
+    product_id: Optional[str] = None,
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
     skip: int = 0,
@@ -110,8 +117,8 @@ def get_usage_events(
     if customer_id:
         query = query.filter(UsageEvent.customer_id == customer_id)
     
-    if feature_id:
-        query = query.filter(UsageEvent.feature_id == feature_id)
+    if product_id:
+        query = query.filter(UsageEvent.product_id == product_id)
     
     if start_date:
         query = query.filter(UsageEvent.timestamp >= start_date)

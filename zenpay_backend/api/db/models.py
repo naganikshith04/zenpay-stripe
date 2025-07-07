@@ -9,7 +9,6 @@ Base = declarative_base()
 
 def generate_uuid():
     return str(uuid.uuid4())
-
 class User(Base):
     __tablename__ = "users"
     
@@ -19,10 +18,11 @@ class User(Base):
     company_name = Column(String, nullable=True)
     stripe_connect_id = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+
     # Relationships
     customers = relationship("Customer", back_populates="user")
-    features = relationship("Feature", back_populates="user")
+    products = relationship("Product", back_populates="user")  # 🔁 lowercase and consistent
+
 
 class Customer(Base):
     __tablename__ = "customers"
@@ -31,7 +31,7 @@ class Customer(Base):
     user_id = Column(String, ForeignKey("users.id"))
     name = Column(String, nullable=True)
     email = Column(String, nullable=True)
-    metadata_json = Column(JSON, nullable=True)  # ✅ Renamed
+    metadata_json = Column(JSON, nullable=True)
     stripe_customer_id = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -39,9 +39,10 @@ class Customer(Base):
     user = relationship("User", back_populates="customers")
     usage_events = relationship("UsageEvent", back_populates="customer")
 
-class Feature(Base):
-    __tablename__ = "features"
-    
+
+class Product(Base):
+    __tablename__ = "products"
+
     id = Column(String, primary_key=True, default=generate_uuid)
     user_id = Column(String, ForeignKey("users.id"))
     name = Column(String)
@@ -49,31 +50,32 @@ class Feature(Base):
     unit_name = Column(String)
     price_per_unit = Column(Float)
     stripe_price_id = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
     stripe_product_id = Column(String, nullable=True)
-    stripe_price_id = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
-    user = relationship("User", back_populates="features")
-    usage_events = relationship("UsageEvent", back_populates="feature")
+    user = relationship("User", back_populates="products")
+    usage_events = relationship("UsageEvent", back_populates="product")
+
 
 class UsageEvent(Base):
     __tablename__ = "usage_events"
-    
+
     id = Column(String, primary_key=True, default=generate_uuid)
     user_id = Column(String, ForeignKey("users.id"))
     customer_id = Column(String, ForeignKey("customers.id"))
-    feature_id = Column(String, ForeignKey("features.id"))
+    product_id = Column(String, ForeignKey("products.id"))  # 🔁 lowercase and consistent
     quantity = Column(Float)
     idempotency_key = Column(String, nullable=True)
     reported_to_stripe = Column(Boolean, default=False)
     stripe_usage_record_id = Column(String, nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
-    
+
     # Relationships
     user = relationship("User")
     customer = relationship("Customer", back_populates="usage_events")
-    feature = relationship("Feature", back_populates="usage_events")
+    product = relationship("Product", back_populates="usage_events")  # 🔁 lowercase and consistent
+
 
 class CreditTransaction(Base):
     __tablename__ = "credit_transactions"

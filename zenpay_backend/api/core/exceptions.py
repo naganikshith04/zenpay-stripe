@@ -11,8 +11,8 @@ class InsufficientCreditsError(ZenPayException):
     """Raised when a customer has insufficient credits"""
     pass
 
-class FeatureNotFoundError(ZenPayException):
-    """Raised when a feature is not found"""
+class ProductNotFoundError(ZenPayException):
+    """Raised when a product is not found"""
     pass
 
 class UsageTrackingError(ZenPayException):

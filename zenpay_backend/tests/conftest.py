@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from zenpay_backend.db.models import Base, User, Feature
+from zenpay_backend.db.models import Base, User, product
 from zenpay_backend.core.security import get_password_hash, generate_api_key
 
 # Use an in-memory SQLite database for tests
@@ -38,8 +38,8 @@ def test_user(db_session):
     return user
 
 @pytest.fixture
-def test_features(db_session, test_user):
-    feature1 = Feature(
+def test_products(db_session, test_user):
+    product1 = product(
         user_id=test_user.id,
         name="API Calls",
         code="api_calls",
@@ -47,7 +47,7 @@ def test_features(db_session, test_user):
         price_per_unit=0.01
     )
     
-    feature2 = Feature(
+    product2 = product(
         user_id=test_user.id,
         name="Storage",
         code="storage",
@@ -55,8 +55,8 @@ def test_features(db_session, test_user):
         price_per_unit=0.50
     )
     
-    db_session.add(feature1)
-    db_session.add(feature2)
+    db_session.add(product1)
+    db_session.add(product2)
     db_session.commit()
     
-    return [feature1, feature2]
+    return [product1, product2]

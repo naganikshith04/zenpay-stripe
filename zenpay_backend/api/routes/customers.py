@@ -56,13 +56,15 @@ def create_new_customer(
             name=db_customer.name,
             email=db_customer.email,
             metadata=db_customer.metadata_json or {},
-            created_at=db_customer.created_at
+            created_at=db_customer.created_at,
         )
 
-
-    # Create Stripe customer
-    stripe_customer = stripe.Customer.create(
-        name=customer.name, email=customer.email, metadata=customer.metadata or {}
+    # ✅ Create Stripe customer on connected account
+    stripe_customer = create_stripe_customer(
+        name=customer.name,
+        email=customer.email,
+        metadata=customer.metadata or {},
+        user_stripe_account=user.stripe_connect_id,  # Stripe Connect account ID
     )
 
     # Save to DB
@@ -71,12 +73,13 @@ def create_new_customer(
         name=customer.name,
         email=customer.email,
         metadata_json=customer.metadata,
-        stripe_customer_id=stripe_customer.id,
+        stripe_customer_id=stripe_customer["id"],
         user_id=user.id,
     )
     db.add(new_customer)
     db.commit()
     db.refresh(new_customer)
+
     return CustomerResponse(
         id=new_customer.id,
         name=new_customer.name,

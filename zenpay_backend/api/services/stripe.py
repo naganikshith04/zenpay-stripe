@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 
 from api.core.config import settings
 from api.db.crud import usage as usage_crud
-from api.db.models import UsageEvent
+from api.db.models import UsageEvent, Customer
+from sqlalchemy.orm import Session
 
 import logging
 
@@ -27,13 +28,13 @@ async def report_usage_to_stripe(db: Session, usage_event_id: str) -> bool:
     # Get the related data
     user = usage_event.user
     customer = usage_event.customer
-    feature = usage_event.feature
+    product = usage_event.product
 
     # We need all these to report to Stripe
     if not (
         user.stripe_connect_id
         and customer.stripe_customer_id
-        and feature.stripe_price_id
+        and product.stripe_price_id
     ):
         return False
 
@@ -42,7 +43,7 @@ async def report_usage_to_stripe(db: Session, usage_event_id: str) -> bool:
         response = stripe.SubscriptionItem.create_usage_record(
             # This assumes the subscription_item_id is stored in stripe_price_id
             # You may need a different model structure for this
-            feature.stripe_price_id,
+            product.stripe_price_id,
             quantity=int(usage_event.quantity),
             timestamp=int(usage_event.timestamp.timestamp()),
             action="increment",
@@ -56,11 +57,6 @@ async def report_usage_to_stripe(db: Session, usage_event_id: str) -> bool:
         # In a real system, you'd want to log this error
         print(f"Error reporting usage to Stripe: {e}")
         return False
-
-
-from sqlalchemy.orm import Session
-import stripe
-from api.db.models import Customer
 
 
 def ensure_stripe_customer(db: Session, db_customer: Customer) -> Customer:
@@ -81,20 +77,14 @@ def ensure_stripe_customer(db: Session, db_customer: Customer) -> Customer:
 
 
 def create_stripe_customer(
-    customer_name: str, customer_email: str = None, user_stripe_account: str = None
+    name: str, email: str, metadata: dict, user_stripe_account: str
 ):
-    import logging
-
-    logger = logging.getLogger(__name__)
-    logger.info(f"🔔 CREATING Stripe customer for {customer_name} ({customer_email})")
-
-    params = {"name": customer_name, "email": customer_email}
-    if user_stripe_account:
-        params["stripe_account"] = user_stripe_account
-
-    customer = stripe.Customer.create(**params)
-    logger.info(f"✅ Stripe customer created: {customer.id}")
-    return customer
+    return stripe.Customer.create(
+        name=name,
+        email=email,
+        metadata=metadata,
+        stripe_account=user_stripe_account,
+    )
 
 
 def create_stripe_product_and_price(
@@ -120,14 +110,22 @@ def create_stripe_product_and_price(
     return product, price
 
 
-def create_metered_price(
-    stripe_account: str, product_id: str, unit_amount: float, currency: str = "usd"
-):
+def create_metered_price(stripe_account, product_id, unit_amount, currency="usd"):
+    # Create a meter first
+    meter = stripe.billing.Meter.create(
+        name="usage",
+        aggregation_method="sum",
+        event_name="usage_event",  # Make sure this matches your reported usage
+        stripe_account=stripe_account,
+    )
+
+    # Now create the price using the meter
     return stripe.Price.create(
-        product=product_id,
         unit_amount=int(unit_amount * 100),
         currency=currency,
-        recurring={"usage_type": "metered", "interval": "month"},
+        recurring={"interval": "month", "usage_type": "metered"},
+        product=product_id,
+        meter=meter.id,
         stripe_account=stripe_account,
     )
 

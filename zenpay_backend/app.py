@@ -57,8 +57,8 @@ class CustomerDB(Base):
     metadata_json = Column(String, nullable=True)  # Renamed from metadata
     created_at = Column(String, default=lambda: datetime.now().isoformat())
 
-class Feature(Base):
-    __tablename__ = "features"
+class product(Base):
+    __tablename__ = "products"
     
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String, ForeignKey("users.id"))
@@ -74,7 +74,7 @@ class UsageEvent(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String, ForeignKey("users.id"))
     customer_id = Column(String, ForeignKey("customers.id"))
-    feature_code = Column(String)
+    product_code = Column(String)
     quantity = Column(Float)
     idempotency_key = Column(String, nullable=True)
     timestamp = Column(String, default=lambda: datetime.now().isoformat())
@@ -126,8 +126,8 @@ class CustomerResponse(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
     created_at: str
 
-# Feature models
-class FeatureCreate(BaseModel):
+# product models
+class productCreate(BaseModel):
     name: str
     code: str
     unit_name: str
@@ -139,7 +139,7 @@ class FeatureCreate(BaseModel):
             raise ValueError('price_per_unit must be positive')
         return v
 
-class FeatureUpdate(BaseModel):
+class productUpdate(BaseModel):
     name: Optional[str] = None
     unit_name: Optional[str] = None
     price_per_unit: Optional[float] = None
@@ -150,7 +150,7 @@ class FeatureUpdate(BaseModel):
             raise ValueError('price_per_unit must be positive')
         return v
 
-class FeatureResponse(BaseModel):
+class productResponse(BaseModel):
     id: str
     name: str
     code: str
@@ -161,14 +161,14 @@ class FeatureResponse(BaseModel):
 # Usage models
 class UsageTrack(BaseModel):
     customer_id: str
-    feature: str
+    product: str
     quantity: float
     idempotency_key: Optional[str] = None
 
 class UsageTrackResponse(BaseModel):
     id: str
     customer_id: str
-    feature: str
+    product: str
     quantity: float
     cost: Optional[float] = None
     timestamp: str
@@ -190,7 +190,7 @@ def get_current_user(api_key: str = Header(..., convert_underscores=False, alias
 # ---- ROUTERS ----
 customers_router = APIRouter()
 usage_router = APIRouter()
-features_router = APIRouter()
+products_router = APIRouter()
 
 # ---- CUSTOMER ROUTES ----
 @customers_router.post("/create", response_model=CustomerResponse)
@@ -212,67 +212,67 @@ def track_usage(
     """Track usage for a customer"""
     # Implementation as provided...
 
-# ---- FEATURE ROUTES ----
-@features_router.post("/create", response_model=FeatureResponse)
-def create_feature(
-    feature: FeatureCreate,
+# ---- product ROUTES ----
+@products_router.post("/create", response_model=productResponse)
+def create_product(
+    product: productCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Create a new billable feature"""
-    print(f"Creating feature: {feature}")
+    """Create a new billable product"""
+    print(f"Creating product: {product}")
     print(f"User ID: {current_user.id}")
     
-    # Check if feature code already exists for this user
-    existing_feature = db.query(Feature).filter(
-        Feature.user_id == current_user.id,
-        Feature.code == feature.code
+    # Check if product code already exists for this user
+    existing_product = db.query(product).filter(
+        product.user_id == current_user.id,
+        product.code == product.code
     ).first()
     
-    if existing_feature:
-        print(f"Feature with code {feature.code} already exists")
+    if existing_product:
+        print(f"product with code {product.code} already exists")
         raise HTTPException(
             status_code=409,
-            detail=f"Feature with code '{feature.code}' already exists"
+            detail=f"product with code '{product.code}' already exists"
         )
     
     try:
-        # Create new feature
-        new_feature = Feature(
+        # Create new product
+        new_product = product(
             user_id=current_user.id,
-            name=feature.name,
-            code=feature.code,
-            unit_name=feature.unit_name,
-            price_per_unit=feature.price_per_unit
+            name=product.name,
+            code=product.code,
+            unit_name=product.unit_name,
+            price_per_unit=product.price_per_unit
         )
         
-        print(f"Adding feature to database: {new_feature}")
-        db.add(new_feature)
+        print(f"Adding product to database: {new_product}")
+        db.add(new_product)
         db.commit()
-        db.refresh(new_feature)
+        db.refresh(new_product)
         
-        print(f"Feature created with ID: {new_feature.id}")
+        print(f"product created with ID: {new_product.id}")
         
         # Create response dictionary
         response = {
-            "id": new_feature.id,
-            "name": new_feature.name,
-            "code": new_feature.code,
-            "unit_name": new_feature.unit_name,
-            "price_per_unit": new_feature.price_per_unit,
-            "created_at": new_feature.created_at
+            "id": new_product.id,
+            "name": new_product.name,
+            "code": new_product.code,
+            "unit_name": new_product.unit_name,
+            "price_per_unit": new_product.price_per_unit,
+            "created_at": new_product.created_at
         }
         print(f"Returning response: {response}")
         return response
     except Exception as e:
-        print(f"Error creating feature: {e}")
+        print(f"Error creating product: {e}")
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to create feature: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create product: {str(e)}")
 
 # Include routers
 app.include_router(customers_router, prefix="/api/v1/customers", tags=["customers"])
 app.include_router(usage_router, prefix="/api/v1/usage", tags=["usage"])
-app.include_router(features_router, prefix="/api/v1/features", tags=["features"])
+app.include_router(products_router, prefix="/api/v1/products", tags=["products"])
 
 # Root endpoint
 @app.get("/")

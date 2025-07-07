@@ -12,7 +12,7 @@ print(response)
 
 usage_response = client.track_usage({
     "customer_id": "cust_xyz",
-    "feature": "feature_code_1",
+    "product": "product_code_1",
     "quantity": 5,
     "idempotency_key": "usage-001"
 })

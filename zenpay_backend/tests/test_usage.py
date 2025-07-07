@@ -2,7 +2,7 @@ import pytest
 from zenpay_backend.db.crud.usage import create_usage_event, get_usage_by_customer
 from zenpay_backend.db.crud.customers import create_customer
 
-def test_create_usage_event(db_session, test_user, test_features):
+def test_create_usage_event(db_session, test_user, test_products):
     # Create a customer first
     customer = create_customer(
         db=db_session,
@@ -16,7 +16,7 @@ def test_create_usage_event(db_session, test_user, test_features):
         db=db_session,
         user_id=test_user.id,
         customer_id="test_customer",
-        feature_code="api_calls",
+        product_code="api_calls",
         quantity=5,
         idempotency_key="test_idempotency_key"
     )
@@ -27,11 +27,11 @@ def test_create_usage_event(db_session, test_user, test_features):
     assert event.customer_id == "test_customer"
     assert event.quantity == 5
     
-    # Verify feature is correct
-    feature = test_features[0]  # The API calls feature
-    assert event.feature_id == feature.id
+    # Verify product is correct
+    product = test_products[0]  # The API calls product
+    assert event.product_id == product.id
 
-def test_idempotency(db_session, test_user, test_features):
+def test_idempotency(db_session, test_user, test_products):
     # Create a customer
     customer = create_customer(
         db=db_session,
@@ -45,7 +45,7 @@ def test_idempotency(db_session, test_user, test_features):
         db=db_session,
         user_id=test_user.id,
         customer_id="test_customer",
-        feature_code="api_calls",
+        product_code="api_calls",
         quantity=5,
         idempotency_key="same_key"
     )
@@ -55,7 +55,7 @@ def test_idempotency(db_session, test_user, test_features):
         db=db_session,
         user_id=test_user.id,
         customer_id="test_customer",
-        feature_code="api_calls",
+        product_code="api_calls",
         quantity=10,  # Different quantity
         idempotency_key="same_key"  # Same key
     )
@@ -64,7 +64,7 @@ def test_idempotency(db_session, test_user, test_features):
     assert event1.id == event2.id
     assert event2.quantity == 5  # Should keep original quantity
 
-def test_get_usage_by_customer(db_session, test_user, test_features):
+def test_get_usage_by_customer(db_session, test_user, test_products):
     # Create a customer
     customer = create_customer(
         db=db_session,
@@ -78,7 +78,7 @@ def test_get_usage_by_customer(db_session, test_user, test_features):
         db=db_session,
         user_id=test_user.id,
         customer_id="test_customer",
-        feature_code="api_calls",
+        product_code="api_calls",
         quantity=5
     )
     
@@ -86,7 +86,7 @@ def test_get_usage_by_customer(db_session, test_user, test_features):
         db=db_session,
         user_id=test_user.id,
         customer_id="test_customer",
-        feature_code="storage",
+        product_code="storage",
         quantity=2
     )
     

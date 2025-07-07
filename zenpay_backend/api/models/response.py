@@ -13,11 +13,11 @@ class CustomerResponse(BaseModel):
 class UsageEventResponse(BaseModel):
     id: str
     customer_id: str
-    feature: str
+    product: str
     quantity: float
     timestamp: datetime
 
-class FeatureResponse(BaseModel):
+class ProductResponse(BaseModel):
     id: str
     name: str
     code: str
@@ -28,11 +28,9 @@ class FeatureResponse(BaseModel):
     class Config:
         from_attributes = True  # Use this for Pydantic v2 compatibility
         
-
 class CreditTopUpResponse(BaseModel):
     customer_id: str
     new_balance: float
-
 
 class CreditTransactionResponse(BaseModel):
     id: str

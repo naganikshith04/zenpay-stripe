@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 stripe.api_key = settings.STRIPE_API_KEY
 
 
+
 async def report_usage_to_stripe(db: Session, usage_event_id: str) -> bool:
     """
     Report a usage event to Stripe

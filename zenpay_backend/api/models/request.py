@@ -8,6 +8,11 @@ class CustomerCreate(BaseModel):
     name: Optional[str] = None
     email: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
+
+class CustomerUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
     
 # Add these to your models section in app.py or in a separate models/request.py file
 
@@ -16,6 +21,7 @@ class ProductCreate(BaseModel):
     code: str
     unit_name: str  # e.g., "calls", "GB", "users"
     price_per_unit: float
+    meter_id: Optional[str] = None
 
     @validator('price_per_unit')
     def price_must_be_positive(cls, v):

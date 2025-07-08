@@ -1,6 +1,8 @@
 # zenpay_backend/db/crud/products.py
 from sqlalchemy.orm import Session
 from typing import List, Optional
+import stripe
+from fastapi import HTTPException, status
 
 from ..models import Product, User
 from core.exceptions import ProductNotFoundError
@@ -12,6 +14,7 @@ def create_product(
     code: str,
     unit_name: str,
     price_per_unit: float,
+    stripe_product_id: Optional[str] = None,
     stripe_price_id: Optional[str] = None
 ) -> Product:
     """Create a new product"""
@@ -22,17 +25,22 @@ def create_product(
     ).first()
     
     if existing:
-        # Update existing product
-        existing.name = name
-        existing.unit_name = unit_name
-        existing.price_per_unit = price_per_unit
-        if stripe_price_id:
-            existing.stripe_price_id = stripe_price_id
-        
-        db.commit()
-        db.refresh(existing)
-        return existing
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Product with this code already exists",
+        )
     
+    # Create product and price in Stripe
+    if not stripe_product_id or not stripe_price_id:
+        from api.services.stripe import create_stripe_product_and_price
+        stripe_product, stripe_price = create_stripe_product_and_price(
+            product_name=name,
+            unit_name=unit_name,
+            price_per_unit=price_per_unit
+        )
+        stripe_product_id = stripe_product.id
+        stripe_price_id = stripe_price.id
+
     # Create new product
     product = Product(
         user_id=user_id,
@@ -40,6 +48,7 @@ def create_product(
         code=code,
         unit_name=unit_name,
         price_per_unit=price_per_unit,
+        stripe_product_id=stripe_product_id,
         stripe_price_id=stripe_price_id
     )
     
@@ -47,6 +56,56 @@ def create_product(
     db.commit()
     db.refresh(product)
     
+    return product
+
+def update_product(
+    db: Session,
+    user_id: str,
+    product_id: str,
+    name: Optional[str] = None,
+    unit_name: Optional[str] = None,
+    price_per_unit: Optional[float] = None
+) -> Optional[Product]:
+    """Update a product's details in the local DB and Stripe."""
+    product = db.query(Product).filter(
+        Product.user_id == user_id,
+        Product.id == product_id
+    ).first()
+
+    if not product:
+        return None
+
+    # Update local database
+    if name is not None:
+        product.name = name
+    if unit_name is not None:
+        product.unit_name = unit_name
+    if price_per_unit is not None:
+        product.price_per_unit = price_per_unit
+
+    # Update Stripe product
+    if product.stripe_product_id:
+        if name is not None:
+            stripe.Product.modify(product.stripe_product_id, name=product.name)
+        
+        if price_per_unit is not None and price_per_unit != product.price_per_unit:
+            # Deactivate the old price
+            if product.stripe_price_id:
+                stripe.Price.modify(product.stripe_price_id, active=False)
+
+            from api.services.stripe import create_stripe_product_and_price
+
+            # Create a new price in Stripe
+            _, new_stripe_price = create_stripe_product_and_price(
+                product_name=product.name,
+                unit_name=product.unit_name,
+                price_per_unit=price_per_unit
+            )
+            product.stripe_price_id = new_stripe_price.id
+            product.price_per_unit = new_stripe_price.unit_amount / 100
+
+    db.commit()
+    db.refresh(product)
     return product
 
 def get_product_by_code(
@@ -83,6 +142,12 @@ def delete_product(
     ).first()
     
     if product:
+        if product.stripe_product_id:
+            try:
+                stripe.Product.modify(product.stripe_product_id, active=False)
+            except stripe.error.InvalidRequestError:
+                # Product might have been already archived in Stripe
+                pass
         db.delete(product)
         db.commit()
         return True

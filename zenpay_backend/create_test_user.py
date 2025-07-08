@@ -7,8 +7,8 @@ import os
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from zenpay_backend.db.session import SessionLocal
-from zenpay_backend.db.models import User
+from api.db.session import SessionLocal
+from api.db.models import User
 
 # After creating tables
 def create_test_user():

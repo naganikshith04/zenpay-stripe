@@ -5,7 +5,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "api"))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.routes.prodcuts import product_router
+from api.routes.products import router
 from api.v1.usage import router as usage_router
 from api.v1.credits import router as credits_router
 
@@ -17,12 +17,21 @@ Base.metadata.create_all(bind=engine)
 # Import routers
 from api.routes.customers import router as customers_router
 
+import stripe
+from api.core.config import settings
+
+import stripe
+from api.core.config import settings
+
 # Create the FastAPI app
 app = FastAPI(
     title="ZenPay API",
     description="API for usage-based billing with Stripe",
     version="0.1.0"
 )
+
+# Set Stripe API key
+stripe.api_key = settings.STRIPE_API_KEY
 
 import logging
 
@@ -70,7 +79,7 @@ def create_test_user():
     finally:
         db.close()
 
-app.include_router(product_router, prefix="/api/v1/products", tags=["products"])
+app.include_router(router, prefix="/api/v1/products", tags=["products"])
 app.include_router(usage_router, prefix="/api/v1/usage", tags=["usage"])
 app.include_router(credits_router, prefix="/api/v1/credits")
 

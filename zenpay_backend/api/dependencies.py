@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from api.db.session import get_db
 from api.db.models import User
 
-def get_current_user(
+def get_current_user_by_api_key(
     api_key: str = Header(..., convert_underscores=False, alias="api-key"), 
     db: Session = Depends(get_db)
 ):

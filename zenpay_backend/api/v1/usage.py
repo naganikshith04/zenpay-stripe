@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import List, Optional
 
 from api.db.session import get_db
-from api.dependencies import get_current_user as get_current_user_by_api_key
+from api.dependencies import get_current_user_by_api_key
 from api.db.models import User
 from api.models.request import UsageTrack
 from models.response import UsageEventResponse

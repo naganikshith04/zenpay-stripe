@@ -6,7 +6,7 @@ from typing import List
 from api.db.crud.credits import add_credits, use_credits, get_credit_balance, get_credit_transactions
 from api.db.crud.customers import get_customer
 from api.db.session import get_db
-from dependencies import get_current_user as get_current_user_by_api_key
+from dependencies import get_current_user_by_api_key
 from models.request import CreditAdd, CreditTopUpRequest
 from models.response import CreditTransactionResponse, CreditBalance
 from api.db.models import User

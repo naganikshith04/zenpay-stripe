@@ -8,7 +8,7 @@ import string
 from passlib.context import CryptContext
 from jose import jwt
 
-from zenpay_backend.core.config import settings
+from api.core.config import settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

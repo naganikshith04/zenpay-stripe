@@ -1,8 +1,9 @@
 import pytest
-from zenpay_backend.db.crud.usage import create_usage_event, get_usage_by_customer
-from zenpay_backend.db.crud.customers import create_customer
+from api.db.crud.customers import create_customer
+from api.db.crud.usage import track_usage, get_usage_events
+from api.db.crud.credits import add_credits
 
-def test_create_usage_event(db_session, test_user, test_products):
+def test_track_usage(db_session, test_user, test_products):
     # Create a customer first
     customer = create_customer(
         db=db_session,
@@ -11,8 +12,16 @@ def test_create_usage_event(db_session, test_user, test_products):
         name="Test Customer"
     )
     
+    # Add credits to the customer
+    add_credits(
+        db=db_session,
+        user_id=test_user.id,
+        customer_id="test_customer",
+        amount=1000  # Add a sufficient amount of credits
+    )
+    
     # Create usage event
-    event = create_usage_event(
+    event = track_usage(
         db=db_session,
         user_id=test_user.id,
         customer_id="test_customer",
@@ -40,8 +49,16 @@ def test_idempotency(db_session, test_user, test_products):
         name="Test Customer"
     )
     
+    # Add credits to the customer
+    add_credits(
+        db=db_session,
+        user_id=test_user.id,
+        customer_id="test_customer",
+        amount=1000  # Add a sufficient amount of credits
+    )
+    
     # Create first usage event
-    event1 = create_usage_event(
+    event1 = track_usage(
         db=db_session,
         user_id=test_user.id,
         customer_id="test_customer",
@@ -51,7 +68,7 @@ def test_idempotency(db_session, test_user, test_products):
     )
     
     # Create second usage event with same idempotency key
-    event2 = create_usage_event(
+    event2 = track_usage(
         db=db_session,
         user_id=test_user.id,
         customer_id="test_customer",
@@ -73,8 +90,16 @@ def test_get_usage_by_customer(db_session, test_user, test_products):
         name="Test Customer"
     )
     
+    # Add credits to the customer
+    add_credits(
+        db=db_session,
+        user_id=test_user.id,
+        customer_id="test_customer",
+        amount=1000  # Add a sufficient amount of credits
+    )
+    
     # Create multiple usage events
-    create_usage_event(
+    track_usage(
         db=db_session,
         user_id=test_user.id,
         customer_id="test_customer",
@@ -82,7 +107,7 @@ def test_get_usage_by_customer(db_session, test_user, test_products):
         quantity=5
     )
     
-    create_usage_event(
+    track_usage(
         db=db_session,
         user_id=test_user.id,
         customer_id="test_customer",
@@ -91,7 +116,7 @@ def test_get_usage_by_customer(db_session, test_user, test_products):
     )
     
     # Get usage events for this customer
-    events = get_usage_by_customer(
+    events = get_usage_events(
         db=db_session,
         user_id=test_user.id,
         customer_id="test_customer"

@@ -16,7 +16,7 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     api_key = Column(String, unique=True, index=True)
     company_name = Column(String, nullable=True)
-    stripe_connect_id = Column(String, nullable=True)
+    
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -51,6 +51,7 @@ class Product(Base):
     price_per_unit = Column(Float)
     stripe_price_id = Column(String, nullable=True)
     stripe_product_id = Column(String, nullable=True)
+    
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships

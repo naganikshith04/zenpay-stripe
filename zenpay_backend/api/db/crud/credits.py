@@ -7,7 +7,7 @@ from models.request import CreditTopUpRequest
 from models.response import CreditTopUpResponse
 from ..models import CreditTransaction, Customer, User
 from core.exceptions import CustomerNotFoundError
-from dependencies import get_current_user
+from dependencies import get_current_user_by_api_key as get_current_user
 from api.db.session import get_db
 
 

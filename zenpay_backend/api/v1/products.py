@@ -8,20 +8,20 @@ import stripe
 
 # Import models
 from api.db.models import Product, UsageEvent, User
-from api.services.stripe import update_product_name, create_metered_price
+from api.services.stripe import update_product_name, create_stripe_product_and_price
 from api.db.session import get_db
-from dependencies import get_current_user
+from api.dependencies import get_current_user_by_api_key
 from models.request import ProductCreate, ProductUpdate
 from models.response import ProductResponse
 
-product_router = APIRouter()
+router = APIRouter()
 
 
-@product_router.post("/create", response_model=ProductResponse)
+@router.post("/", response_model=ProductResponse)
 def create_product(
     product: ProductCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_by_api_key),
 ):
     """Create a new billable product and sync with Stripe"""
     existing_product = (
@@ -70,13 +70,13 @@ def create_product(
     }
 
 
-@product_router.get("/list", response_model=List[ProductResponse])
+@router.get("/list", response_model=List[ProductResponse])
 def list_products(
     skip: int = 0,
     limit: int = 100,
     sync_with_stripe: bool = False,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_by_api_key),
 ):
     """List all products for the current user, optionally enriched with Stripe data"""
     products = (
@@ -105,7 +105,7 @@ def list_products(
                 enriched.update({
                     "stripe_product_active": stripe_product.active,
                     "stripe_price_active": stripe_price.active,
-                    "stripe_price_amount": stripe_price.unit_amount / 100,
+                    "price_per_unit": stripe_price.unit_amount / 100, # Update price_per_unit
                 })
             except stripe.error.StripeError as e:
                 enriched["stripe_sync_error"] = str(e.user_message or e)
@@ -115,11 +115,12 @@ def list_products(
     return result
 
 
-@product_router.get("/{product_id}", response_model=ProductResponse)
+@router.get("/{product_id}", response_model=ProductResponse)
 def get_product(
     product_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_by_api_key),
+    sync_with_stripe: bool = False,
 ):
     product = (
         db.query(Product)
@@ -130,6 +131,14 @@ def get_product(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
+    if sync_with_stripe:
+        try:
+            stripe_price = stripe.Price.retrieve(product.stripe_price_id)
+            product.price_per_unit = stripe_price.unit_amount / 100
+        except stripe.error.StripeError as e:
+            # Log the error or handle it as appropriate
+            pass
+
     return {
         "id": product.id,
         "name": product.name,
@@ -140,11 +149,12 @@ def get_product(
     }
 
 
-@product_router.get("/code/{product_code}", response_model=ProductResponse)
+@router.get("/code/{product_code}", response_model=ProductResponse)
 def get_product_by_code(
     product_code: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_by_api_key),
+    sync_with_stripe: bool = False,
 ):
     product = (
         db.query(Product)
@@ -155,6 +165,14 @@ def get_product_by_code(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
+    if sync_with_stripe:
+        try:
+            stripe_price = stripe.Price.retrieve(product.stripe_price_id)
+            product.price_per_unit = stripe_price.unit_amount / 100
+        except stripe.error.StripeError as e:
+            # Log the error or handle it as appropriate
+            pass
+
     return {
         "id": product.id,
         "name": product.name,
@@ -165,12 +183,12 @@ def get_product_by_code(
     }
 
 
-@product_router.put("/{product_id}", response_model=ProductResponse)
+@router.put("/{product_id}", response_model=ProductResponse)
 def update_product(
     product_id: str,
     product_data: ProductUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_by_api_key),
 ):
     product = (
         db.query(Product)
@@ -184,7 +202,7 @@ def update_product(
     if product_data.name and product_data.name != product.name:
         product.name = product_data.name
         update_product_name(
-            product.stripe_product_id, product.name, current_user.stripe_connect_id
+            product.stripe_product_id, product.name
         )
 
     if product_data.unit_name:
@@ -195,14 +213,19 @@ def update_product(
         and product_data.price_per_unit != product.price_per_unit
     ):
         product.price_per_unit = product_data.price_per_unit
-        new_price = create_metered_price(
-            stripe_account=current_user.stripe_connect_id,
-            product_id=product.stripe_product_id,
-            unit_amount=product.price_per_unit,
-            currency="usd",
+        product_name = product.name
+        unit_name = product.unit_name
+        price_per_unit = product.price_per_unit
+        meter_id = product.meter_id
+
+        stripe_product, new_price = create_stripe_product_and_price(
+            product_name=product_name,
+            unit_name=unit_name,
+            price_per_unit=product_data.price_per_unit
         )
 
         product.stripe_price_id = new_price["id"]
+        product.price_per_unit = new_price["unit_amount"] / 100 # Update local price with Stripe's
 
     db.commit()
     db.refresh(product)
@@ -212,16 +235,16 @@ def update_product(
         "name": product.name,
         "code": product.code,
         "unit_name": product.unit_name,
-        "price_per_unit": product.price_per_unit,
+        "price_per_unit": new_price["unit_amount"] / 100 if product_data.price_per_unit and product_data.price_per_unit != product.price_per_unit else product.price_per_unit,
         "created_at": product.created_at,
     }
 
 
-@product_router.delete("/{product_id}")
+@router.delete("/{product_id}")
 def delete_product(
     product_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_by_api_key),
 ):
     product = (
         db.query(Product)

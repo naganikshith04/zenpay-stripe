@@ -5,7 +5,7 @@ from typing import List
 
 from db.crud.customers import create_customer, get_customer, get_customers, delete_customer
 from db.session import get_db
-from dependencies import get_current_user_by_api_key
+from api.dependencies import get_current_user_by_api_key
 from models.request import CustomerCreate, CustomerUpdate
 from models.response import CustomerResponse
 from db.models import User

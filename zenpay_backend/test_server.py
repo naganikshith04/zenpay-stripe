@@ -1,19 +1,20 @@
 # test_server.py
 
 import uvicorn
-from zenpay_backend.main import app
-from zenpay_backend.db.session import engine
-from zenpay_backend.db.models import Base, User, product
-from zenpay_backend.core.security import get_password_hash, generate_api_key
+from api.main import app
+from api.db.session import engine
+from api.db.models import Base, User, Product
+from api.core.security import get_password_hash, generate_api_key
 from sqlalchemy.orm import Session
 
 # Create database and sample data for testing
 def setup_test_data():
-    # Create database tables
+    # Drop and create database tables
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     
     # Create a test session
-    from zenpay_backend.db.session import SessionLocal
+    from api.db.session import SessionLocal
     db = SessionLocal()
     
     try:
@@ -33,20 +34,22 @@ def setup_test_data():
             db.refresh(test_user)
             
             # Create test products
-            product1 = product(
+            product1 = Product(
                 user_id=test_user.id,
                 name="API Calls",
                 code="api_calls",
                 unit_name="call",
-                price_per_unit=0.01
+                price_per_unit=0.01,
+                meter_id=None
             )
             
-            product2 = product(
+            product2 = Product(
                 user_id=test_user.id,
                 name="Storage",
                 code="storage",
                 unit_name="GB",
-                price_per_unit=0.50
+                price_per_unit=0.50,
+                meter_id=None
             )
             
             db.add(product1)

@@ -13,7 +13,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Initialize Stripe with our API key
-stripe.api_key = ""
+stripe.api_key = settings.STRIPE_API_KEY
 
 
 async def report_usage_to_stripe(db: Session, usage_event_id: str) -> bool:
@@ -32,8 +32,7 @@ async def report_usage_to_stripe(db: Session, usage_event_id: str) -> bool:
 
     # We need all these to report to Stripe
     if not (
-        user.stripe_connect_id
-        and customer.stripe_customer_id
+        customer.stripe_customer_id
         and product.stripe_price_id
     ):
         return False
@@ -47,7 +46,6 @@ async def report_usage_to_stripe(db: Session, usage_event_id: str) -> bool:
             quantity=int(usage_event.quantity),
             timestamp=int(usage_event.timestamp.timestamp()),
             action="increment",
-            stripe_account=user.stripe_connect_id,
         )
 
         # Update the usage event as reported
@@ -77,61 +75,44 @@ def ensure_stripe_customer(db: Session, db_customer: Customer) -> Customer:
 
 
 def create_stripe_customer(
-    name: str, email: str, metadata: dict, user_stripe_account: str
+    name: str, email: str, metadata: dict
 ):
     return stripe.Customer.create(
         name=name,
         email=email,
         metadata=metadata,
-        stripe_account=user_stripe_account,
     )
 
 
 def create_stripe_product_and_price(
-    user_stripe_account: str, product_name: str, unit_name: str, price_per_unit: float
+    product_name: str, unit_name: str, price_per_unit: float
 ):
     """
     Create a product and price in Stripe
     """
     # Create product
     product = stripe.Product.create(
-        name=product_name, stripe_account=user_stripe_account
+        name=product_name
     )
 
     # Create price
-    price = stripe.Price.create(
-        product=product.id,
-        unit_amount=int(price_per_unit * 100),  # Convert to cents
-        currency="usd",
-        recurring={"usage_type": "metered"},
-        stripe_account=user_stripe_account,
-    )
+    price_data = {
+        "product": product.id,
+        "unit_amount": int(price_per_unit * 100),  # Convert to cents
+        "currency": "usd",
+        "recurring": {"interval": "month"},
+    }
+
+    price = stripe.Price.create(**price_data)
 
     return product, price
 
 
-def create_metered_price(stripe_account, product_id, unit_amount, currency="usd"):
-    # Create a meter first
-    meter = stripe.billing.Meter.create(
-        name="usage",
-        aggregation_method="sum",
-        event_name="usage_event",  # Make sure this matches your reported usage
-        stripe_account=stripe_account,
-    )
-
-    # Now create the price using the meter
-    return stripe.Price.create(
-        unit_amount=int(unit_amount * 100),
-        currency=currency,
-        recurring={"interval": "month", "usage_type": "metered"},
-        product=product_id,
-        meter=meter.id,
-        stripe_account=stripe_account,
-    )
 
 
-def update_product_name(product_id: str, new_name: str, user_stripe_account: str):
+
+def update_product_name(product_id: str, new_name: str):
     """
     Update the name of a Stripe product.
     """
-    stripe.Product.modify(product_id, name=new_name, stripe_account=user_stripe_account)
+    stripe.Product.modify(product_id, name=new_name)

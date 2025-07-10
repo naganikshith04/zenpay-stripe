@@ -35,7 +35,6 @@ def create_product(
         from api.services.stripe import create_stripe_product_and_price
         stripe_product, stripe_price = create_stripe_product_and_price(
             product_name=name,
-            unit_name=unit_name,
             price_per_unit=price_per_unit
         )
         stripe_product_id = stripe_product.id
@@ -75,6 +74,9 @@ def update_product(
     if not product:
         return None
 
+    # Store old price for comparison
+    old_price = product.price_per_unit
+
     # Update local database
     if name is not None:
         product.name = name
@@ -88,18 +90,13 @@ def update_product(
         if name is not None:
             stripe.Product.modify(product.stripe_product_id, name=product.name)
         
-        if price_per_unit is not None and price_per_unit != product.price_per_unit:
-            # Deactivate the old price
-            if product.stripe_price_id:
-                stripe.Price.modify(product.stripe_price_id, active=False)
+        if price_per_unit is not None and price_per_unit != old_price:
+            from api.services.stripe import update_stripe_product_price
 
-            from api.services.stripe import create_stripe_product_and_price
-
-            # Create a new price in Stripe
-            _, new_stripe_price = create_stripe_product_and_price(
-                product_name=product.name,
-                unit_name=product.unit_name,
-                price_per_unit=price_per_unit
+            new_stripe_price = update_stripe_product_price(
+                stripe_product_id=product.stripe_product_id,
+                old_stripe_price_id=product.stripe_price_id,
+                new_price_per_unit=price_per_unit,
             )
             product.stripe_price_id = new_stripe_price.id
             product.price_per_unit = new_stripe_price.unit_amount / 100

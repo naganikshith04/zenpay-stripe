@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from api.db.models import Base, User, Product
+from zenpay_backend.api.db.models import Base, User, Product
 from api.core.security import get_password_hash, generate_api_key
 
 # Use an in-memory SQLite database for tests

@@ -86,7 +86,7 @@ def create_stripe_customer(
 
 
 def create_stripe_product_and_price(
-    product_name: str, unit_name: str, price_per_unit: float
+    product_name: str, price_per_unit: float
 ):
     """
     Create a product and price in Stripe
@@ -107,6 +107,34 @@ def create_stripe_product_and_price(
     price = stripe.Price.create(**price_data)
 
     return product, price
+
+
+def update_stripe_product_price(
+    stripe_product_id: str, old_stripe_price_id: str, new_price_per_unit: float
+):
+    """
+    Deactivates the old price and creates a new price for a Stripe product.
+    """
+    # Deactivate the old price
+    if old_stripe_price_id:
+        try:
+            stripe.Price.modify(old_stripe_price_id, active=False)
+        except stripe.error.InvalidRequestError as e:
+            # Ignore if the price is already archived
+            if "archived" not in str(e).lower():
+                raise
+
+    # Create a new price
+    price_data = {
+        "product": stripe_product_id,
+        "unit_amount": int(new_price_per_unit * 100),  # Convert to cents
+        "currency": "usd",
+        "recurring": {"interval": "month"},
+    }
+
+    new_price = stripe.Price.create(**price_data)
+
+    return new_price
 
 
 

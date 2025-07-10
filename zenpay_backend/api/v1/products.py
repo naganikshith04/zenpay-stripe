@@ -213,19 +213,17 @@ def update_product(
         and product_data.price_per_unit != product.price_per_unit
     ):
         product.price_per_unit = product_data.price_per_unit
-        product_name = product.name
-        unit_name = product.unit_name
-        price_per_unit = product.price_per_unit
-        meter_id = product.meter_id
 
-        stripe_product, new_price = create_stripe_product_and_price(
-            product_name=product_name,
-            unit_name=unit_name,
-            price_per_unit=product_data.price_per_unit
+        from api.services.stripe import update_stripe_product_price
+
+        new_price = update_stripe_product_price(
+            stripe_product_id=product.stripe_product_id,
+            old_stripe_price_id=product.stripe_price_id,
+            new_price_per_unit=product_data.price_per_unit,
         )
 
-        product.stripe_price_id = new_price["id"]
-        product.price_per_unit = new_price["unit_amount"] / 100 # Update local price with Stripe's
+        product.stripe_price_id = new_price.id
+        product.price_per_unit = new_price.unit_amount / 100 # Update local price with Stripe's
 
     db.commit()
     db.refresh(product)
@@ -235,7 +233,7 @@ def update_product(
         "name": product.name,
         "code": product.code,
         "unit_name": product.unit_name,
-        "price_per_unit": new_price["unit_amount"] / 100 if product_data.price_per_unit and product_data.price_per_unit != product.price_per_unit else product.price_per_unit,
+        "price_per_unit": product.price_per_unit,
         "created_at": product.created_at,
     }
 

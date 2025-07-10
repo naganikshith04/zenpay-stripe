@@ -46,11 +46,12 @@ def create_product(name: str, code: str, unit_name: str, price_per_unit: float):
 def create_stripe_subscription(stripe_customer_id: str, stripe_price_id: str):
     print(f"\n--- Creating Stripe Subscription for Customer {stripe_customer_id} to Price {stripe_price_id} ---")
     try:
+        future_timestamp = int(time.time()) + 60  # 60 seconds in the future
         subscription = stripe.Subscription.create(
             customer=stripe_customer_id,
             items=[{"price": stripe_price_id}],
             collection_method='charge_automatically', # Or 'send_invoice'
-            billing_cycle_anchor='now', # Start billing cycle immediately
+            billing_cycle_anchor=future_timestamp, # Start billing cycle immediately
         )
         print(f"Stripe Subscription Created: {subscription.id}")
         # Give Stripe a moment to process

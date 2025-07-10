@@ -64,3 +64,7 @@ class CreditAdd(BaseModel):
     customer_id: str
     amount: float
     description: Optional[str] = None
+
+class SubscriptionCreate(BaseModel):
+    customer_id: str
+    product_code: str

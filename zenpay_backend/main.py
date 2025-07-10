@@ -5,9 +5,10 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "api"))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.routes.products import router
-from api.v1.usage import router as usage_router
-from api.v1.credits import router as credits_router
+from api.routes.products import router as products_router
+from api.routes.usage import router as usage_router
+from api.routes.credits import router as credits_router
+from api.routes.subscriptions import router as subscriptions_router
 
 from api.db.models import Base
 from api.db.session import engine
@@ -79,9 +80,10 @@ def create_test_user():
     finally:
         db.close()
 
-app.include_router(router, prefix="/api/v1/products", tags=["products"])
+app.include_router(products_router, prefix="/api/v1/products", tags=["products"])
 app.include_router(usage_router, prefix="/api/v1/usage", tags=["usage"])
 app.include_router(credits_router, prefix="/api/v1/credits")
+app.include_router(subscriptions_router, prefix="/api/v1/subscriptions", tags=["subscriptions"])
 
 # Initialize test user
 TEST_API_KEY = create_test_user()

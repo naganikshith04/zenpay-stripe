@@ -5,11 +5,12 @@ from datetime import datetime
 from typing import List, Optional
 
 from api.db.session import get_db
-from api.dependencies import get_current_user as get_current_user_by_api_key
+from api.dependencies import get_current_user_by_api_key
 from api.db.models import User
 from api.models.request import UsageTrack
 from models.response import UsageEventResponse
 from api.db.crud.usage import track_usage, get_usage_events, report_usage_to_stripe
+from api.db.crud.subscriptions import get_subscription_by_customer_and_product
 from core.exceptions import CustomerNotFoundError, ProductNotFoundError, InsufficientCreditsError
 from api.db.crud.products import get_product_by_code
 
@@ -39,27 +40,22 @@ def record_usage(
         )
 
         if report_to_stripe:
-            from api.services.stripe import get_subscription_item_id
-            if usage_event.product.stripe_price_id and usage_event.customer.stripe_customer_id:
-                stripe_subscription_item_id = get_subscription_item_id(
-                    stripe_customer_id=usage_event.customer.stripe_customer_id,
-                    stripe_price_id=usage_event.product.stripe_price_id
-                )
-                if not stripe_subscription_item_id:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Could not find Stripe subscription item for customer and product. Ensure the customer has an active subscription to this product."
-                    )
-                report_usage_to_stripe(
-                    stripe_subscription_item_id=stripe_subscription_item_id,
-                    quantity=usage_event.quantity,
-                    timestamp=usage_event.timestamp
-                )
-            else:
+            subscription = get_subscription_by_customer_and_product(
+                db=db,
+                user_id=current_user.id,
+                customer_id=usage_event.customer_id,
+                product_id=usage_event.product_id
+            )
+            if not subscription:
                 raise HTTPException(
                     status_code=400,
-                    detail="Missing Stripe price ID or customer ID; cannot report usage to Stripe"
+                    detail="No active subscription found for this customer and product. Cannot report usage to Stripe."
                 )
+            report_usage_to_stripe(
+                owner=subscription.stripe_subscription_item_id,
+                quantity=usage_event.quantity,
+                timestamp=usage_event.timestamp
+            )
 
         return UsageEventResponse(
             id=usage_event.id,

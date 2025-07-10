@@ -14,7 +14,7 @@ from api.db.crud.products import (
     update_product,
 )
 from api.db.session import get_db
-from dependencies import get_current_user_by_api_key as get_current_user
+from api.dependencies import get_current_user_by_api_key as get_current_user
 from models.request import ProductCreate, ProductUpdate
 from models.response import ProductResponse
 from api.db.models import User

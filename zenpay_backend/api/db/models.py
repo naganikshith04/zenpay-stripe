@@ -88,3 +88,18 @@ class CreditTransaction(Base):
     timestamp = Column(DateTime, default=datetime.utcnow)
     description = Column(String)
     type = Column(String)
+
+class Subscription(Base):
+    __tablename__ = "subscriptions"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    user_id = Column(String, ForeignKey("users.id"))
+    customer_id = Column(String, ForeignKey("customers.id"))
+    product_id = Column(String, ForeignKey("products.id"))
+    stripe_subscription_id = Column(String, unique=True, nullable=False)
+    stripe_subscription_item_id = Column(String, unique=True, nullable=False)
+    status = Column(String, default="active") # e.g., active, canceled, past_due
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    customer = relationship("Customer")
+    product = relationship("Product")

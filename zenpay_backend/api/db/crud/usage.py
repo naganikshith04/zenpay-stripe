@@ -83,22 +83,23 @@ def track_usage(
     return usage_event
 
 
-def report_usage_to_stripe(stripe_subscription_item_id: str, quantity: int, timestamp: datetime):
-    print(f"[Stripe] Reporting usage: subscription_item={stripe_subscription_item_id}, quantity={quantity}, time={timestamp}")
+
+
+def report_usage_to_stripe(stripe_price_id: str, stripe_customer_id: str, quantity: float, timestamp: datetime):
+    print(f"[Stripe] Reporting usage: customer={stripe_customer_id}, price_id={stripe_price_id}, quantity={quantity}, time={timestamp}")
     try:
-        response = stripe.SubscriptionItem.create_usage_record(
-            stripe_subscription_item_id,
+        response = stripe.Source.create(
             quantity=quantity,
             timestamp=int(timestamp.timestamp()),
             action='increment',
+            owner=stripe_price_id,
         )
         print(f"[Stripe] Usage record response: {response}")
     except Exception as e:
         print(f"[Stripe] Stripe error: {e}")
         raise
 
-    
-    
+     
 def get_usage_events(
     db: Session,
     user_id: str,

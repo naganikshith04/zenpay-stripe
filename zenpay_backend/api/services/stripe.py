@@ -16,11 +16,6 @@ logger = logging.getLogger(__name__)
 # Initialize Stripe with our API key
 stripe.api_key = settings.STRIPE_API_KEY
 
-
-
-
-
-
 def ensure_stripe_customer(db: Session, db_customer: Customer) -> Customer:
     try:
         # Check if Stripe customer exists

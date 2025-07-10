@@ -61,4 +61,6 @@ class CreditTopUpRequest(BaseModel):
     amount: float
 
 class CreditAdd(BaseModel):
+    customer_id: str
     amount: float
+    description: Optional[str] = None

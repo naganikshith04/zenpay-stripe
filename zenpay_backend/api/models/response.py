@@ -1,13 +1,13 @@
 # models/response.py
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 
 class CustomerResponse(BaseModel):
     id: str
     name: Optional[str] = None
     email: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = Field(None, alias="metadata_json")
     created_at: datetime
     
 class UsageEventResponse(BaseModel):

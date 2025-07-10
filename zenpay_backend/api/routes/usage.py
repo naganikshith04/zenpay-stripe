@@ -39,10 +39,19 @@ def record_usage(
         )
 
         if report_to_stripe:
+            from api.services.stripe import get_subscription_item_id
             if usage_event.product.stripe_price_id and usage_event.customer.stripe_customer_id:
-                report_usage_to_stripe(
-                    stripe_price_id=usage_event.product.stripe_price_id,
+                stripe_subscription_item_id = get_subscription_item_id(
                     stripe_customer_id=usage_event.customer.stripe_customer_id,
+                    stripe_price_id=usage_event.product.stripe_price_id
+                )
+                if not stripe_subscription_item_id:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Could not find Stripe subscription item for customer and product. Ensure the customer has an active subscription to this product."
+                    )
+                report_usage_to_stripe(
+                    stripe_subscription_item_id=stripe_subscription_item_id,
                     quantity=usage_event.quantity,
                     timestamp=usage_event.timestamp
                 )

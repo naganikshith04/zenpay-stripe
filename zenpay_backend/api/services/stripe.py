@@ -1,5 +1,6 @@
 # zenpay_backend/services/stripe.py
 
+from typing import Optional
 import stripe
 from sqlalchemy.orm import Session
 
@@ -17,45 +18,7 @@ stripe.api_key = settings.STRIPE_API_KEY
 
 
 
-async def report_usage_to_stripe(db: Session, usage_event_id: str) -> bool:
-    """
-    Report a usage event to Stripe
-    """
-    # Get the usage event
-    usage_event = db.query(UsageEvent).filter(UsageEvent.id == usage_event_id).first()
-    if not usage_event or usage_event.reported_to_stripe:
-        return False
 
-    # Get the related data
-    user = usage_event.user
-    customer = usage_event.customer
-    product = usage_event.product
-
-    # We need all these to report to Stripe
-    if not (
-        customer.stripe_customer_id
-        and product.stripe_price_id
-    ):
-        return False
-
-    try:
-        # Create usage record in Stripe
-        response = stripe.SubscriptionItem.create_usage_record(
-            # This assumes the subscription_item_id is stored in stripe_price_id
-            # You may need a different model structure for this
-            product.stripe_price_id,
-            quantity=int(usage_event.quantity),
-            timestamp=int(usage_event.timestamp.timestamp()),
-            action="increment",
-        )
-
-        # Update the usage event as reported
-        usage_crud.mark_usage_as_reported(db, usage_event.id, response.id)
-        return True
-    except Exception as e:
-        # In a real system, you'd want to log this error
-        print(f"Error reporting usage to Stripe: {e}")
-        return False
 
 
 def ensure_stripe_customer(db: Session, db_customer: Customer) -> Customer:
@@ -136,12 +99,23 @@ def update_stripe_product_price(
 
     return new_price
 
-
-
-
-
 def update_product_name(product_id: str, new_name: str):
     """
     Update the name of a Stripe product.
     """
     stripe.Product.modify(product_id, name=new_name)
+
+def get_subscription_item_id(stripe_customer_id: str, stripe_price_id: str) -> Optional[str]:
+    """
+    Retrieves the subscription item ID for a given customer and price.
+    """
+    try:
+        subscriptions = stripe.Subscription.list(customer=stripe_customer_id, status='active')
+        for subscription in subscriptions.auto_paging_iter():
+            for item in subscription.items.data:
+                if item.price.id == stripe_price_id:
+                    return item.id
+        return None
+    except Exception as e:
+        logger.error(f"Error getting subscription item ID: {e}")
+        return None

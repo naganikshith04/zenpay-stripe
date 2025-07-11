@@ -12,8 +12,8 @@ from api.db.crud.customers import (
 )
 from api.db.session import get_db
 from dependencies import get_current_user_by_api_key
-from models.request import CustomerCreate, CustomerUpdate
-from models.response import CustomerResponse
+from models.request import CustomerCreate, CustomerUpdate, CheckoutSessionCreate, BillingPortalCreate
+from models.response import CustomerResponse, CheckoutSessionResponse, BillingPortalResponse
 from api.db.models import User
 
 router = APIRouter()
@@ -88,3 +88,41 @@ def remove_customer(
     if not success:
         raise HTTPException(status_code=404, detail="Customer not found")
     return None
+
+@router.post("/checkout-session", response_model=CheckoutSessionResponse)
+def create_customer_checkout_session(
+    checkout_session: CheckoutSessionCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_by_api_key),
+):
+    """Create a new checkout session for a customer"""
+    from api.services.checkout_service import create_checkout_session, create_billing_portal_session
+    db_customer = get_customer(db=db, user_id=current_user.id, customer_id=checkout_session.customer_id)
+    if not db_customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    session = create_checkout_session(
+        customer_id=db_customer.stripe_customer_id,
+        price_id=checkout_session.price_id,
+        success_url=checkout_session.success_url,
+        cancel_url=checkout_session.cancel_url,
+    )
+    return {"url": session.url}
+
+@router.post("/billing-portal", response_model=BillingPortalResponse)
+def create_customer_billing_portal(
+    billing_portal: BillingPortalCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_by_api_key),
+):
+    """Create a new billing portal for a customer"""
+    from api.services.stripe_service import create_billing_portal_session
+    db_customer = get_customer(db=db, user_id=current_user.id, customer_id=billing_portal.customer_id)
+    if not db_customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    session = create_billing_portal_session(
+        customer_id=db_customer.stripe_customer_id,
+        return_url=billing_portal.return_url,
+    )
+    return {"url": session.url}

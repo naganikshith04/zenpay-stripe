@@ -147,3 +147,80 @@ def get_subscription_item_id(stripe_customer_id: str, stripe_price_id: str) -> O
     except Exception as e:
         logger.error(f"Error getting subscription item ID: {e}")
         return None
+
+
+def report_usage_to_stripe(
+    db: Session,
+    db_customer: Customer,
+
+    event_name: str,
+    quantity: int,
+    timestamp: int,
+):
+    """
+    Report usage for a customer to Stripe's Billing Meters.
+    """
+    # Ensure the customer exists in Stripe
+    db_customer = ensure_stripe_customer(db, db_customer)
+
+    # Create a usage record in Stripe
+    try:
+        stripe.billing.MeterEvent.create(
+            event_name=event_name,
+            payload={
+                "value": quantity,
+                "stripe_customer_id": db_customer.stripe_customer_id,
+            },
+            timestamp=timestamp,
+        )
+        logger.info(f"Reported usage for customer {db_customer.id}: {quantity} units of {event_name}")
+    except stripe.error.StripeError as e:
+        logger.error(f"Error reporting usage to Stripe for customer {db_customer.id}: {e}")
+        raise
+
+def create_stripe_subscription(
+    stripe_customer_id: str, stripe_price_id: str
+):
+    """
+    Create a subscription for a customer in Stripe.
+    """
+    return stripe.Subscription.create(
+        customer=stripe_customer_id,
+        items=[{"price": stripe_price_id}],
+    )
+
+def cancel_stripe_subscription(stripe_subscription_id: str):
+    """
+    Cancel a subscription in Stripe.
+    """
+    return stripe.Subscription.delete(stripe_subscription_id)
+
+def create_payment_intent(
+    amount: int,
+    currency: str,
+    customer_id: str,
+    payment_method_id: Optional[str] = None,
+    description: Optional[str] = None,
+    metadata: Optional[dict] = None,
+):
+    """
+    Create a Stripe Payment Intent.
+    """
+    intent_params = {
+        "amount": amount,
+        "currency": currency,
+        "customer": customer_id,
+        "description": description,
+        "metadata": metadata,
+        "automatic_payment_methods": {"enabled": True},
+    }
+    if payment_method_id:
+        intent_params["payment_method"] = payment_method_id
+
+    return stripe.PaymentIntent.create(**intent_params)
+
+def get_payment_method_details(payment_method_id: str):
+    """
+    Retrieve details of a specific payment method from Stripe.
+    """
+    return stripe.PaymentMethod.retrieve(payment_method_id)

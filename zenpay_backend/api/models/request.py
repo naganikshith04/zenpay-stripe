@@ -68,3 +68,13 @@ class CreditAdd(BaseModel):
 class SubscriptionCreate(BaseModel):
     customer_id: str
     product_code: str
+
+class CheckoutSessionCreate(BaseModel):
+    customer_id: str
+    price_id: str
+    success_url: str
+    cancel_url: str
+
+class BillingPortalCreate(BaseModel):
+    customer_id: str
+    return_url: str

@@ -52,7 +52,7 @@ def record_usage(
                     detail="No active subscription found for this customer and product. Cannot report usage to Stripe."
                 )
             report_usage_to_stripe(
-                owner=subscription.stripe_subscription_item_id,
+                subscription_item_id=subscription.stripe_subscription_item_id,
                 quantity=usage_event.quantity,
                 timestamp=usage_event.timestamp
             )

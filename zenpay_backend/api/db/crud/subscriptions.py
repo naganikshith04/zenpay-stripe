@@ -64,7 +64,8 @@ def get_subscription_by_customer_and_product(
     return db.query(Subscription).filter(
         Subscription.user_id == user_id,
         Subscription.customer_id == customer_id,
-        Subscription.product_id == product_id
+        Subscription.product_id == product_id,
+        Subscription.status == 'active'
     ).first()
 
 def get_subscription_by_stripe_item_id(

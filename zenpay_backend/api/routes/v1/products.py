@@ -214,7 +214,7 @@ def update_product(
     ):
         product.price_per_unit = product_data.price_per_unit
 
-        from api.services.stripe import update_stripe_product_price
+        from api.services.stripe_service import update_stripe_product_price
 
         new_price = update_stripe_product_price(
             stripe_product_id=product.stripe_product_id,

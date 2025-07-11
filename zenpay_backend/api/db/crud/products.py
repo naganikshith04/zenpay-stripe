@@ -91,7 +91,7 @@ def update_product(
             stripe.Product.modify(product.stripe_product_id, name=product.name)
         
         if price_per_unit is not None and price_per_unit != old_price:
-            from api.services.stripe import update_stripe_product_price
+            from api.services.stripe_service import update_stripe_product_price
 
             new_stripe_price = update_stripe_product_price(
                 stripe_product_id=product.stripe_product_id,

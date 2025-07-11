@@ -13,6 +13,7 @@ from api.db.crud.usage import track_usage, get_usage_events, report_usage_to_str
 from api.db.crud.subscriptions import get_subscription_by_customer_and_product
 from core.exceptions import CustomerNotFoundError, ProductNotFoundError, InsufficientCreditsError
 from api.db.crud.products import get_product_by_code
+from api.db.crud.customers import get_customer
 
 
 router = APIRouter()
@@ -28,6 +29,7 @@ def record_usage(
     """
     Track usage for a customer's product and optionally report to Stripe
     """
+    print(f"DEBUG: Received quantity in record_usage: {usage_data.quantity}")
     try:
         usage_event = track_usage(
             db=db,
@@ -40,6 +42,12 @@ def record_usage(
         )
 
         if report_to_stripe:
+            customer = get_customer(db, current_user.id, usage_data.customer_id)
+            if not customer or not customer.stripe_customer_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Customer not found or missing Stripe ID. Cannot report usage to Stripe."
+                )
             subscription = get_subscription_by_customer_and_product(
                 db=db,
                 user_id=current_user.id,
@@ -52,10 +60,13 @@ def record_usage(
                     detail="No active subscription found for this customer and product. Cannot report usage to Stripe."
                 )
             report_usage_to_stripe(
-                subscription_item_id=subscription.stripe_subscription_item_id,
+                stripe_customer_id=customer.stripe_customer_id,
                 quantity=usage_event.quantity,
+                event_name="zenpay_tokens",
+                quantity_payload_key="value",
                 timestamp=usage_event.timestamp
             )
+        print(f"DEBUG: Quantity from usage_event before reporting to Stripe: {usage_event.quantity}")
 
         return UsageEventResponse(
             id=usage_event.id,

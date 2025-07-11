@@ -32,10 +32,12 @@ def create_product(
     
     # Create product and price in Stripe
     if not stripe_product_id or not stripe_price_id:
-        from api.services.stripe import create_stripe_product_and_price
+        from api.services.stripe_service import create_stripe_product_and_price
         stripe_product, stripe_price = create_stripe_product_and_price(
             product_name=name,
-            price_per_unit=price_per_unit
+            price_per_unit=price_per_unit,
+            event_name="zenpay_tokens",
+            quantity_payload_key="value"
         )
         stripe_product_id = stripe_product.id
         stripe_price_id = stripe_price.id

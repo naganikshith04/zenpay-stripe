@@ -16,6 +16,34 @@ logger = logging.getLogger(__name__)
 # Initialize Stripe with our API key
 stripe.api_key = settings.STRIPE_API_KEY
 
+def _get_or_create_meter(event_name: str, display_name: str):
+    """
+    Helper to get or create a Stripe Meter.
+    """
+    try:
+        # Try to retrieve an existing meter
+        meters = stripe.billing.Meter.list(limit=100) # Fetch a reasonable number of meters
+        for meter in meters.data:
+            if meter.event_name == event_name:
+                return meter
+    except stripe.error.StripeError as e:
+        logger.warning(f"Could not retrieve meter {event_name}: {e}")
+
+    # If not found, create a new meter
+    try:
+        meter = stripe.billing.Meter.create(
+            display_name=display_name,
+            event_name=event_name,
+            default_aggregation={"formula": "sum"},
+            customer_mapping={"event_payload_key": "stripe_customer_id", "type": "by_id"},
+            value_settings={"event_payload_key": "value"},
+        )
+        logger.info(f"Created new Stripe Meter: {meter.id}")
+        return meter
+    except stripe.error.StripeError as e:
+        logger.error(f"Error creating Stripe Meter {event_name}: {e}")
+        raise
+
 def ensure_stripe_customer(db: Session, db_customer: Customer) -> Customer:
     try:
         # Check if Stripe customer exists
@@ -44,22 +72,27 @@ def create_stripe_customer(
 
 
 def create_stripe_product_and_price(
-    product_name: str, price_per_unit: float
+    product_name: str, price_per_unit: float, event_name: str, quantity_payload_key: str
 ):
     """
-    Create a product and price in Stripe
+    Create a product and metered price in Stripe
     """
+    # Ensure the meter exists
+    meter = _get_or_create_meter(event_name=event_name, display_name=product_name + " Usage")
+
     # Create product
     product = stripe.Product.create(
         name=product_name
     )
 
-    # Create price
+    # Create metered price
     price_data = {
         "product": product.id,
         "unit_amount": int(price_per_unit * 100),  # Convert to cents
         "currency": "usd",
-        "recurring": {"interval": "month"},
+        "recurring": {"interval": "month", "usage_type": "metered", "meter": meter.id},
+        "billing_scheme": "per_unit",
+        "lookup_key": event_name, # Link price to meter
     }
 
     price = stripe.Price.create(**price_data)

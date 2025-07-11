@@ -8,7 +8,7 @@ import stripe
 
 # Import models
 from api.db.models import Product, UsageEvent, User
-from api.services.stripe import update_product_name, create_stripe_product_and_price
+from api.services.stripe_service import update_product_name, create_stripe_product_and_price
 from api.db.session import get_db
 from api.dependencies import get_current_user_by_api_key
 from models.request import ProductCreate, ProductUpdate

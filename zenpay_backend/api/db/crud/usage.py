@@ -72,7 +72,7 @@ def track_usage(
         user_id=user_id,
         customer_id=customer_id,
         product_id=product.id,
-        quantity=quantity,
+        quantity=int(quantity),
         idempotency_key=idempotency_key
     )
     
@@ -85,16 +85,25 @@ def track_usage(
 
 
 
-def report_usage_to_stripe(subscription_item_id: str, quantity: float, timestamp: datetime):
-    print(f"[Stripe] Reporting usage: subscription_item_id={subscription_item_id}, quantity={quantity}, time={timestamp}")
+def report_usage_to_stripe(
+    stripe_customer_id: str,
+    quantity: float,
+    event_name: str,
+    quantity_payload_key: str,
+    timestamp: datetime
+):
+    print(f"[Stripe] Reporting usage: customer_id={stripe_customer_id}, quantity={int(quantity)}, event_name={event_name}, time={timestamp}")
     try:
-        response = stripe.UsageRecord.create(
-            subscription_item=subscription_item_id,
-            quantity=quantity,
-            timestamp=int(timestamp.timestamp()),
-            action='increment',
+        payload = {
+            "stripe_customer_id": stripe_customer_id,
+            quantity_payload_key: int(quantity),
+        }
+        response = stripe.billing.MeterEvent.create(
+            event_name=event_name,
+            payload=payload,
+            timestamp=int(timestamp.timestamp())
         )
-        print(f"[Stripe] Usage record response: {response}")
+        print(f"[Stripe] Meter event response: {response}")
     except Exception as e:
         print(f"[Stripe] Stripe error: {e}")
         raise

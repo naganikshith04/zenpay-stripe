@@ -72,7 +72,7 @@ def create_stripe_customer(
 
 
 def create_stripe_product_and_price(
-    product_name: str, price_per_unit: float, event_name: str, quantity_payload_key: str
+    product_name: str, price_per_unit: float, product_code: str, event_name: str, quantity_payload_key: str
 ):
     """
     Create a product and metered price in Stripe
@@ -92,7 +92,7 @@ def create_stripe_product_and_price(
         "currency": "usd",
         "recurring": {"interval": "month", "usage_type": "metered", "meter": meter.id},
         "billing_scheme": "per_unit",
-        "lookup_key": event_name, # Link price to meter
+        "lookup_key": f"{event_name}_{product_code}", # Use a unique lookup key
     }
 
     price = stripe.Price.create(**price_data)

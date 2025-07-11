@@ -36,6 +36,7 @@ def create_product(
         stripe_product, stripe_price = create_stripe_product_and_price(
             product_name=name,
             price_per_unit=price_per_unit,
+            product_code=code,
             event_name="zenpay_tokens",
             quantity_payload_key="value"
         )
